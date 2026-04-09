@@ -1,6 +1,6 @@
 import os
 import requests
-from flask import Flask, request
+from flask import Flask, request, jsonify
 
 app = Flask(__name__)
 
@@ -17,18 +17,35 @@ pasillos = {
 
 @app.route("/webhook", methods=["POST"])
 def webhook():
-    data = request.get_json()
-    if "message" in data:
-        chat_id = data["message"]["chat"]["id"]
-        texto = data["message"]["text"].lower().strip()
+    try:
+        data = request.get_json()
         
-        if texto in pasillos:
-            respuesta = f"El producto \"{texto}\" está en el PASILLO {pasillos[texto]}"
-        else:
-            respuesta = "No entiendo la pregunta. Productos: carne, queso, jamón, leche, yogurth, cereal, bebidas, jugos, pan, pasteles, tortas, detergente, lavaloza"
+        # Verificar si existe el mensaje y si tiene texto
+        if data and "message" in data:
+            message = data["message"]
+            
+            # Verificar si el mensaje tiene texto
+            if "text" in message:
+                chat_id = message["chat"]["id"]
+                texto = message["text"].lower().strip()
+                
+                if texto in pasillos:
+                    respuesta = f"El producto \"{texto}\" está en el PASILLO {pasillos[texto]}"
+                else:
+                    respuesta = "No entiendo la pregunta. Productos: carne, queso, jamón, leche, yogurth, cereal, bebidas, jugos, pan, pasteles, tortas, detergente, lavaloza"
+                
+                requests.post(f"{URL}/sendMessage", json={"chat_id": chat_id, "text": respuesta})
+            else:
+                # Mensaje sin texto (foto, sticker, etc.)
+                pass
         
-        requests.post(f"{URL}/sendMessage", json={"chat_id": chat_id, "text": respuesta})
-    return "ok"
+        return jsonify({"status": "ok"}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/", methods=["GET"])
+def home():
+    return "Bot funcionando", 200
 
 if __name__ == "__main__":
-    app.run(port=5000)
+    app.run(host="0.0.0.0", port=5000)
